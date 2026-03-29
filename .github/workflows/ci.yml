@@ -32,6 +32,7 @@ jobs:
       - run: terraform apply -auto-approve
         env:
           TF_VAR_endpoint_url: http://localhost:8001
+        timeout-minutes: 1
   e2e-fail:
     name: E2E (fail)
     runs-on: ubuntu-latest
@@ -45,3 +46,4 @@ jobs:
           [ $? != 0 ] || echo "terraform apply succeeded"
         env:
           TF_VAR_endpoint_url: http://localhost:8000
+        timeout-minutes: 5

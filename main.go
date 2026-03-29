@@ -62,7 +62,13 @@ func main() {
 		if strings.HasSuffix(cloneReq.Header.Get("X-Amz-Target"), ".DescribeTable") && proxyResp.StatusCode == http.StatusOK {
 			slog.InfoContext(ctx, "attempting rewrite response JSON")
 			data := map[string]map[string]any{}
-			if err := json.NewDecoder(proxyResp.Body).Decode(&data); err != nil {
+			rawData, err := io.ReadAll(proxyResp.Body)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to read proxy response body", slog.Any("error", err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if err := json.Unmarshal(rawData, &data); err != nil {
 				slog.ErrorContext(ctx, "failed to decode JSON", slog.Any("error", err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return

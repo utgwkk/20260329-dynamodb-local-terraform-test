@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -28,13 +27,7 @@ func main() {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		rawBody, err := io.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
 		cloneReq := r.Clone(r.Context())
-		cloneReq.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 		cloneReq.RequestURI = ""
 		cloneReq.URL.Scheme = "http"
 		cloneReq.URL.Host = "localhost:8000"
@@ -71,13 +64,7 @@ func main() {
 		if strings.HasSuffix(cloneReq.Header.Get("X-Amz-Target"), ".DescribeTable") && proxyResp.StatusCode == http.StatusOK {
 			slog.InfoContext(ctx, "attempting rewrite response JSON")
 			data := map[string]map[string]any{}
-			rawData, err := io.ReadAll(proxyResp.Body)
-			if err != nil {
-				slog.ErrorContext(ctx, "failed to read proxy response body", slog.Any("error", err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			if err := json.Unmarshal(rawData, &data); err != nil {
+			if err := json.NewDecoder(proxyResp.Body).Decode(&data); err != nil {
 				slog.ErrorContext(ctx, "failed to decode JSON", slog.Any("error", err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -91,15 +78,8 @@ func main() {
 				"WriteUnitsPerSecond": 5,
 			}
 
-			encoded, err := json.Marshal(data)
-			if err != nil {
-				slog.ErrorContext(ctx, "failed to encode JSON", slog.Any("error", err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
 			w.WriteHeader(proxyResp.StatusCode)
-			_, err = w.Write(encoded)
-			if err != nil {
+			if err := json.NewEncoder(w).Encode(data); err != nil {
 				slog.ErrorContext(ctx, "failed to write", slog.Any("error", err))
 				return
 			}

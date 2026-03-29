@@ -10,10 +10,7 @@ import (
 
 func proxyDynamoDBLocalHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	cloneReq := r.Clone(r.Context())
-	cloneReq.RequestURI = ""
-	cloneReq.URL.Scheme = "http"
-	cloneReq.URL.Host = getEnvOrDefault("DYNAMODB_LOCAL_HOST", "localhost:8000")
+	cloneReq := cloneRequestForProxy(r)
 
 	slog.DebugContext(
 		ctx, "attempting to request",
@@ -36,15 +33,9 @@ func proxyDynamoDBLocalHandler(w http.ResponseWriter, r *http.Request) {
 		slog.String("status", proxyResp.Status),
 	)
 
-	for k, headers := range proxyResp.Header {
-		if k == "Content-Length" {
-			continue
-		}
-		for _, h := range headers {
-			w.Header().Add(k, h)
-		}
-	}
-	if strings.HasSuffix(cloneReq.Header.Get("X-Amz-Target"), ".DescribeTable") && proxyResp.StatusCode == http.StatusOK {
+	copyHTTPResponseHeader(w, proxyResp)
+
+	if isDescribeTableRequest(cloneReq) && proxyResp.StatusCode == http.StatusOK {
 		slog.InfoContext(ctx, "attempting rewrite response JSON")
 		data := map[string]map[string]any{}
 		if err := json.NewDecoder(proxyResp.Body).Decode(&data); err != nil {
@@ -71,4 +62,27 @@ func proxyDynamoDBLocalHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(proxyResp.StatusCode)
 		io.Copy(w, proxyResp.Body)
 	}
+}
+
+func cloneRequestForProxy(r *http.Request) *http.Request {
+	cloneReq := r.Clone(r.Context())
+	cloneReq.RequestURI = ""
+	cloneReq.URL.Scheme = "http"
+	cloneReq.URL.Host = getEnvOrDefault("DYNAMODB_LOCAL_HOST", "localhost:8000")
+	return cloneReq
+}
+
+func copyHTTPResponseHeader(w http.ResponseWriter, proxyResp *http.Response) {
+	for k, headers := range proxyResp.Header {
+		if k == "Content-Length" {
+			continue
+		}
+		for _, h := range headers {
+			w.Header().Add(k, h)
+		}
+	}
+}
+
+func isDescribeTableRequest(req *http.Request) bool {
+	return strings.HasSuffix(req.Header.Get("X-Amz-Target"), ".DescribeTable")
 }

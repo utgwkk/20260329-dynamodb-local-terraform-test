@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/ne-sachirou/go-graceful"
 	"github.com/ne-sachirou/go-graceful/gracefulhttp"
+	"github.com/thinkgos/httpcurl"
 )
 
 func main() {
@@ -27,7 +30,13 @@ func main() {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		rawBody, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		cloneReq := r.Clone(r.Context())
+		cloneReq.Body = io.NopCloser(bytes.NewBuffer(rawBody))
 		cloneReq.RequestURI = ""
 		cloneReq.URL.Scheme = "http"
 		cloneReq.URL.Host = "localhost:8000"
@@ -39,6 +48,13 @@ func main() {
 			slog.String("path", cloneReq.URL.Path),
 			slog.String("xAmzTarget", cloneReq.Header.Get("X-Amz-Target")),
 		)
+		curlStr, err := httpcurl.IntoCurl(cloneReq)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to dump request as curl", slog.Any("error", err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		fmt.Println(curlStr)
 
 		proxyResp, err := http.DefaultClient.Do(cloneReq)
 		if err != nil {
@@ -88,7 +104,10 @@ func main() {
 				return
 			}
 			w.WriteHeader(proxyResp.StatusCode)
-			w.Write(encoded)
+			_, err = w.Write(encoded)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to write", slog.Any("error", err))
+			}
 			slog.InfoContext(ctx, "response rewrite succeeded")
 		} else {
 			w.WriteHeader(proxyResp.StatusCode)

@@ -15,3 +15,39 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go test -v ./...
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: hashicorp/setup-terraform@v4
+      - run: docker compose up -d
+      - name: Start proxy server as daemon
+        run: |
+          go run . > /tmp/proxy.log 2>&1 &
+      - run: terraform init
+      - name: Check DynamoDB local
+        run: curl -i http://localhost:8001
+      - run: terraform apply -auto-approve
+        env:
+          TF_VAR_endpoint_url: http://localhost:8001
+        timeout-minutes: 1
+  e2e-fail:
+    name: E2E (fail)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v4
+      - run: docker compose up -d
+      - run: terraform init
+      - name: Check DynamoDB local
+        run: curl -i http://localhost:8000
+      - run: |
+          terraform apply -auto-approve
+          [ $? != 0 ] || echo "terraform apply succeeded"
+        env:
+          TF_VAR_endpoint_url: http://localhost:8000
+        timeout-minutes: 5

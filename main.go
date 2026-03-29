@@ -101,6 +101,7 @@ func main() {
 			_, err = w.Write(encoded)
 			if err != nil {
 				slog.ErrorContext(ctx, "failed to write", slog.Any("error", err))
+				return
 			}
 			slog.InfoContext(ctx, "response rewrite succeeded")
 		} else {

@@ -29,6 +29,8 @@ jobs:
         run: |
           go run . > /tmp/proxy.log 2>&1 &
       - run: terraform init
+      - name: Check DynamoDB local
+        run: curl -i http://localhost:8001
       - run: terraform apply -auto-approve
         env:
           TF_VAR_endpoint_url: http://localhost:8001
@@ -41,6 +43,8 @@ jobs:
       - uses: hashicorp/setup-terraform@v4
       - run: docker compose up -d
       - run: terraform init
+      - name: Check DynamoDB local
+        run: curl -i http://localhost:8000
       - run: |
           terraform apply -auto-approve
           [ $? != 0 ] || echo "terraform apply succeeded"

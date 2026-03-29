@@ -70,6 +70,9 @@ func main() {
 		)
 
 		for k, headers := range proxyResp.Header {
+			if k == "Content-Length" {
+				continue
+			}
 			for _, h := range headers {
 				w.Header().Add(k, h)
 			}

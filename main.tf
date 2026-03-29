@@ -7,6 +7,11 @@ terraform {
   }
 }
 
+variable "endpoint_url" {
+  type    = string
+  default = "http://localhost:8000"
+}
+
 provider "aws" {
   region = "ap-northeast-1"
 
@@ -18,7 +23,7 @@ provider "aws" {
   skip_requesting_account_id  = true
 
   endpoints {
-    dynamodb = "http://localhost:8000"
+    dynamodb = var.endpoint_url
   }
 }
 

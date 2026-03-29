@@ -32,3 +32,16 @@ jobs:
       - run: terraform apply -auto-approve
         env:
           TF_VAR_endpoint_url: http://localhost:8001
+  e2e-fail:
+    name: E2E (fail)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v4
+      - run: docker compose up -d
+      - run: terraform init
+      - run: |
+          terraform apply -auto-approve
+          [ $? != 0 ] || echo "terraform apply succeeded"
+        env:
+          TF_VAR_endpoint_url: http://localhost:8000

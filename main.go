@@ -61,7 +61,7 @@ func main() {
 		}
 		if strings.HasSuffix(cloneReq.Header.Get("X-Amz-Target"), ".DescribeTable") && proxyResp.StatusCode == http.StatusOK {
 			slog.InfoContext(ctx, "attempting rewrite response JSON")
-			data := map[string]any{}
+			data := map[string]map[string]any{}
 			if err := json.NewDecoder(proxyResp.Body).Decode(&data); err != nil {
 				slog.ErrorContext(ctx, "failed to decode JSON", slog.Any("error", err))
 				w.WriteHeader(http.StatusInternalServerError)
@@ -70,7 +70,7 @@ func main() {
 			slog.DebugContext(ctx, "raw response", slog.Any("data", data))
 
 			// append dummy ProvisionedThroughput
-			data["ProvisionedThroughput"] = map[string]int{
+			data["Table"]["ProvisionedThroughput"] = map[string]int{
 				"NumberOfDecreasesToday": 0,
 				"ReadCapacityUnits":      5,
 				"WriteCapacityUnits":     5,

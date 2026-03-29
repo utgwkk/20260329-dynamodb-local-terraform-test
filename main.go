@@ -69,11 +69,11 @@ func main() {
 			}
 			slog.DebugContext(ctx, "raw response", slog.Any("data", data))
 
-			// append dummy ProvisionedThroughput
-			data["Table"]["ProvisionedThroughput"] = map[string]int{
-				"NumberOfDecreasesToday": 0,
-				"ReadCapacityUnits":      5,
-				"WriteCapacityUnits":     5,
+			// append dummy WarmThroughput
+			data["Table"]["WarmThroughput"] = map[string]any{
+				"Status":              "ACTIVE",
+				"ReadUnitsPerSecond":  5,
+				"WriteUnitsPerSecond": 5,
 			}
 
 			encoded := &bytes.Buffer{}

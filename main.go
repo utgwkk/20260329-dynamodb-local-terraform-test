@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -82,14 +81,14 @@ func main() {
 				"WriteUnitsPerSecond": 5,
 			}
 
-			encoded := &bytes.Buffer{}
-			if err := json.NewEncoder(encoded).Encode(data); err != nil {
+			encoded, err := json.Marshal(data)
+			if err != nil {
 				slog.ErrorContext(ctx, "failed to encode JSON", slog.Any("error", err))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			w.WriteHeader(proxyResp.StatusCode)
-			w.Write(encoded.Bytes())
+			w.Write(encoded)
 			slog.InfoContext(ctx, "response rewrite succeeded")
 		} else {
 			w.WriteHeader(proxyResp.StatusCode)
